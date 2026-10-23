@@ -12,10 +12,21 @@ import (
 	"time"
 
 	"github.com/popochoo/L7-ingress-controller/internal/config"
+	"github.com/popochoo/L7-ingress-controller/internal/metrics"
 	"github.com/popochoo/L7-ingress-controller/internal/mirror"
 	"github.com/popochoo/L7-ingress-controller/internal/router"
 	"golang.org/x/time/rate"
 )
+
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (lrw *loggingResponseWriter) WriteHeader(code int) {
+	lrw.statusCode = code
+	lrw.ResponseWriter.WriteHeader(code)
+}
 
 type ProxyServer struct {
 	configManager interface{ Get() *config.Config }
@@ -40,6 +51,8 @@ func NewProxyServer(
 }
 
 func (ps *ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	startTime := time.Now()
+
 	currentConfig := ps.configManager.Get()
 	rt := router.NewRouter(currentConfig)
 
@@ -48,6 +61,13 @@ func (ps *ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not Found (Ingress)", http.StatusNotFound)
 		return
 	}
+
+	lrw := &loggingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+	defer func() {
+		metrics.GetMetrics().ObserveDuration(route.Path, r.Method, startTime)
+		metrics.GetMetrics().IncRequests(route.Path, r.Method, lrw.statusCode)
+	}()
 
 	if route.RateLimitRPS > 0 {
 		limiter := ps.getLimiter(route.Path, route.RateLimitRPS)
@@ -82,12 +102,16 @@ func (ps *ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					Body:      bodyBytes,
 				}
 
-				_ = ps.mirrorPool.TryQueue(task)
+				if ps.mirrorPool.TryQueue(task) {
+					metrics.GetMetrics().IncMirrored(route.Path)
+				} else {
+					metrics.GetMetrics().IncDropped(route.Path)
+				}
 			}
 		}
 	}
 
-	ps.forwardWithFallback(w, r, route)
+	ps.forwardWithFallback(lrw, r, route)
 }
 
 func (ps *ProxyServer) forwardWithFallback(w http.ResponseWriter, r *http.Request, route config.RouteConfig) {
