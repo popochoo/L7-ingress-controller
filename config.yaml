@@ -1,0 +1,15 @@
+server:
+  listen_addr: ":8080"
+  shutdown_timeout: "15s"
+
+routes:
+  - path: "/api/v1/users"
+    match_type: "prefix"
+    methods: ["GET", "POST"]
+    rate_limit_rps: 1000
+    backend:
+      url: "http://prod-users-service:8081"
+      fallback_url: "http://static-backup-service:8083"
+    mirror:
+      url: "http://test-users-service:8082"
+      percentage: 15
