@@ -12,7 +12,7 @@ import (
 )
 
 type Config struct {
-	Server string        `yaml:"server"`
+	Server ServerConfig  `yaml:"server"`
 	Routes []RouteConfig `yaml:"routes"`
 }
 
@@ -27,7 +27,7 @@ type RouteConfig struct {
 	Methods      []string      `yaml:"methods"`
 	RateLimitRPS int           `yaml:"rate_limit_rps"`
 	Backend      BackendConfig `yaml:"backend"`
-	Mirror       *MirrorConfig `yaml:"mirror, omitempty"`
+	Mirror       *MirrorConfig `yaml:"mirror,omitempty"`
 }
 
 type BackendConfig struct {
