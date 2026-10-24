@@ -3,3 +3,6 @@ mock-backends-run:
 
 ingress-run:
 	go run cmd/ingress/main.go
+
+ingress-test-run:
+	docker-compose up --build
