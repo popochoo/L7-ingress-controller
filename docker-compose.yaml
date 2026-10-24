@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  ingress-controller:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    volumes:
+      - ./config.yaml:/root/config.yaml
+    depends_on:
+      - mock-backends
+    networks:
+      - ingress-net
+
+  mock-backends:
+    image: golang:1.27-alpine
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: go run cmd/mock_backends/main.go
+    ports:
+      - "8081:8081"
+      - "8082:8082"
+    networks:
+      - ingress-net
+
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    ports:
+      - "9093:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - ingress-controller
+    networks:
+      - ingress-net
+
+  load-generator:
+    image: skandyla/wrk
+
+    command: ["-t4", "-c200", "-d10s", "http://ingress-controller:8080/api/v1/tasks"]
+    depends_on:
+      - ingress-controller
+    networks:
+      - ingress-net
+
+networks:
+  ingress-net:
+    driver: bridge

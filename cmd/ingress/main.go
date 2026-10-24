@@ -20,7 +20,7 @@ func main() {
 
 	metrics.InitMetrics()
 
-	mirrorPool := mirror.NewWorkerPool(50, 10000)
+	mirrorPool := mirror.NewWorkerPool(10, 100)
 	mirrorPool.Start()
 
 	proxyServer := proxy.NewProxyServer(cfgManager, mirrorPool)

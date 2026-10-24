@@ -3,13 +3,13 @@ server:
   shutdown_timeout: "15s"
 
 routes:
-  - path: "/api/v1/users"
+  - path: "/api/v1/tasks"
     match_type: "prefix"
     methods: ["GET", "POST"]
-    rate_limit_rps: 1000
+    rate_limit_rps: 50000
     backend:
-      url: "http://prod-users-service:8081"
-      fallback_url: "http://static-backup-service:8083"
+      url: "http://mock-backends:8081"
+      fallback_url: ""
     mirror:
-      url: "http://test-users-service:8082"
-      percentage: 15
+      url: "http://mock-backends:8082"
+      percentage: 100
