@@ -46,6 +46,15 @@ services:
       - ingress-controller
     networks:
       - ingress-net
+  
+  grafana:
+    image: grafana/grafana:10.2.0
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - ingress-net
 
 networks:
   ingress-net:
